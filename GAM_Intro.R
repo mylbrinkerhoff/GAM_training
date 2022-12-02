@@ -106,7 +106,7 @@ two.colors = bpy.colors(n = 2,
 plot_smooth(m2, 
             view="Time", 
             plot_all="Word",
-            main="",
+            main="m2",
             rug=FALSE, 
             ylim=c(-1,2), 
             col=two.colors
@@ -165,7 +165,240 @@ m3 <- bam(Pos ~ Word +
 (smrym3 <- summary(m3))
 
 par(mfrow=c(1,2))
-plot_smooth(m3, view="Time", plot_all="Word", main="m3", rug=FALSE, rm.ranef=T, ylim=c(-1,2), 
-            col=two.colors)
+plot_smooth(m3, view="Time", 
+            plot_all="Word", 
+            main="m3", 
+            rug=FALSE, 
+            rm.ranef=T, 
+            ylim=c(-1,2), 
+            col=two.colors
+            )
 
-plot_diff(m3, view="Time", comp=list(Word=c("tenth","tent")), rm.ranef=T, ylim=c(-1,2))
+plot_diff(m3, 
+          view="Time",
+          comp=list(Word=c("tenth","tent")), 
+          rm.ranef=T, 
+          ylim=c(-1,2)
+          )
+
+# Random slopes
+m4 <- bam(Pos ~ Word + 
+            s(Time, by=Word) + 
+            s(Speaker,bs="re") + 
+            s(Speaker,Word,bs="re"), 
+          data=dat
+          )
+(smrym4 <- summary(m4))
+
+# comparing m3 to m4
+compareML(m3,m4)
+
+# plotting the smooth and difference for m4
+par(mfrow=c(1,2))
+plot_smooth(m4, view="Time", 
+            plot_all="Word", 
+            main="m4", 
+            rug=FALSE, 
+            rm.ranef=T, 
+            ylim=c(-1,2), 
+            col=two.colors
+            ) 
+
+plot_diff(m4, 
+          view="Time", 
+          comp=list(Word=c("tenth",
+                           "tent")), 
+          rm.ranef=T, 
+          ylim=c(-1,2)
+          )
+
+# Factor smooths
+m5 <- bam(Pos ~ Word + 
+            s(Time, by=Word) + 
+            s(Speaker,Word,bs="re") + 
+            s(Time,Speaker,bs="fs",m=1), 
+          data=dat
+          )
+(smrym5 <- summary(m5))
+
+# plotting m5 simple
+plot(m5, select=4)
+
+# comparing m4 and m5
+compareML(m4,m5)
+
+# plotting the smooth and difference for m5
+par(mfrow=c(1,2))
+plot_smooth(m5, 
+            view="Time", 
+            plot_all="Word",
+            main="m5",
+            rug=FALSE, 
+            rm.ranef=T, 
+            ylim=c(-1,2), 
+            col=two.colors
+            ) 
+
+plot_diff(m5, 
+          view="Time",
+          comp=list(Word=c("tenth","tent")),
+          rm.ranef=T, 
+          ylim=c(-1,2)
+          )
+
+# generating another model for comparing
+m6 <- bam(Pos ~ Word + 
+            s(Time, by=Word) + 
+            s(Time,
+              Speaker,
+              by=Word,
+              bs="fs",
+              m=1),
+          data=dat
+          )
+(smrym6 <- summary(m6))
+
+compareML(m5,m6)
+
+par(mfrow=c(1,2))
+plot_smooth(m6, 
+            view="Time", 
+            plot_all="Word", 
+            main="m6", 
+            rug=FALSE, 
+            rm.ranef=T,
+            ylim=c(-1,2), 
+            col=two.colors
+            ) 
+
+plot_diff(m6, 
+          view="Time", 
+          comp=list(Word=c("tenth","tent")), 
+          rm.ranef=T, 
+          ylim=c(-1,2)
+          )
+
+# autocorrection
+m6acf <- acf_resid(m6)
+
+(rhoval <- m6acf[2]) # autocorrelation at lag 1
+
+m7 <- bam(Pos ~ Word +
+            s(Time, by=Word) +
+            s(Time,Speaker,by=Word,bs="fs",m=1), 
+          data=dat, 
+          rho=rhoval, 
+          AR.start=dat$start.event) 
+
+acf_resid(m7)
+
+summary(m7)
+
+par(mfrow=c(1,2))
+plot_smooth(m7, 
+            view="Time", 
+            plot_all="Word", 
+            main="m7", 
+            rug=FALSE, 
+            rm.ranef=T, 
+            ylim=c(-1,2), 
+            col=two.colors
+            ) 
+
+plot_diff(m7,
+          view="Time",
+          comp=list(Word=c("tenth","tent")), 
+          rm.ranef=T, 
+          ylim=c(-1,2)
+          )
+
+m7.alt <- bam(Pos ~ Word + s(Time, by=Word) + s(Time,Speaker,by=Word,bs="fs",m=1), data=dat, 
+              rho=rhoval - 0.1, AR.start=dat$start.event) 
+
+acf_resid(m7.alt)
+
+m7.alt2 <- bam(Pos ~ Word + s(Time, by=Word) + s(Time,Speaker,by=Word,bs="fs",m=1), data=dat, 
+               rho=0.99, AR.start=dat$start.event) 
+
+acf_resid(m7.alt2)
+
+par(mfrow=c(1,2))
+plot_smooth(m7.alt2, view="Time", plot_all="Word", main="m7.alt2", rug=FALSE, rm.ranef=T, ylim=c(-1,2), 
+            col=two.colors) 
+
+plot_diff(m7.alt2, view="Time", comp=list(Word=c("tenth","tent")), rm.ranef=T, ylim=c(-1,2))
+
+# Tensor product interaction
+m8 <- bam(Pos ~ Word + te(Time, Trial, by=Word) + s(Time,Speaker,by=Word,bs="fs",m=1), data=dat, 
+          rho=rhoval, AR.start=dat$start.event)
+(smrym8 <- summary(m8))
+
+par(mfrow=c(2,2))
+fvisgam(m8, view=c("Time","Trial"), cond=list(Word=c("tent")), main="m8: tent", rm.ranef=T,
+        zlim=c(-0.9,1.6), ylim=c(0,600), color="gray")
+
+fvisgam(m8, view=c("Time","Trial"), cond=list(Word=c("tenth")), main="m8: tenth", rm.ranef=T,
+        zlim=c(-0.9,1.6), ylim=c(0,600), color="gray") 
+
+plot_diff2(m8, view=c("Time","Trial"), comp=list(Word=c("tenth","tent")), rm.ranef=T,  se=0,
+           main="Difference tenth - tent", zlim=c(-0.1,1.2), ylim=c(0,600), color="gray")
+
+par(mfcol=c(3,2))
+plot_diff2(m8, view=c("Time","Trial"), comp=list(Word=c("tenth","tent")), rm.ranef=T,  se=0,
+           main="Difference tenth - tent", zlim=c(-0.1,1.2), ylim=c(0,600), color="gray",
+           cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5) 
+
+abline(h=500,lty=2,lwd=2,col="white")
+
+plot_diff2(m8, view=c("Time","Trial"), comp=list(Word=c("tenth","tent")), rm.ranef=T,  se=0,
+           main="Difference tenth - tent", zlim=c(-0.1,1.2), ylim=c(0,600), color="gray",
+           cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5) 
+
+abline(h=300,lty=2,lwd=2,col="white")
+
+plot_diff2(m8, view=c("Time","Trial"), comp=list(Word=c("tenth","tent")), rm.ranef=T,  se=0,
+           main="Difference tenth - tent", zlim=c(-0.1,1.2), ylim=c(0,600), color="gray",
+           cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5) 
+
+abline(h=100,lty=2,lwd=2,col="white")
+
+plot_diff(m8, view="Time", comp=list(Word=c("tenth","tent")), cond=list(Trial=500), rm.ranef=T, 
+          main="Difference for trial 500", ylim=c(-1,2), cex.lab=1.5, cex.axis=1.5, 
+          cex.main=1.5, cex.sub=1.5) 
+
+abline(h=1.035,lty=3)
+abline(v=0.745,lty=3)
+
+plot_diff(m8, view="Time", comp=list(Word=c("tenth","tent")), cond=list(Trial=300), rm.ranef=T, 
+          main="Difference for trial 300", ylim=c(-1,2), cex.lab=1.5, cex.axis=1.5, 
+          cex.main=1.5, cex.sub=1.5)
+
+abline(h=1.035,lty=3)
+abline(v=0.745,lty=3)
+
+plot_diff(m8, view="Time", comp=list(Word=c("tenth","tent")), cond=list(Trial=100), rm.ranef=T, 
+          main="Difference for trial 100", ylim=c(-1,2), cex.lab=1.5, cex.axis=1.5, 
+          cex.main=1.5, cex.sub=1.5)
+
+abline(h=1.035,lty=3)
+abline(v=0.745,lty=3)
+
+# Decomposition of tensor
+m8.dc <- bam(Pos ~ Word + s(Time, by=Word) + s(Trial, by=Word) + ti(Time, Trial, by=Word) + 
+               s(Time,Speaker,by=Word,bs="fs",m=1), data=dat, rho=rhoval, 
+             AR.start=dat$start.event)
+(smrym8.dc <- summary(m8.dc))
+
+par(mfrow=c(2,2))
+plot(m8.dc, select=1, shade=T, rug=F, cex.lab=1.35, cex.axis=1.35, cex.main=1.35, cex.sub=1.35,
+     ylim=c(-1.5,1.5))
+abline(h=0)
+plot(m8.dc, select=2, shade=T, rug=F, cex.lab=1.35, cex.axis=1.35, cex.main=1.35, cex.sub=1.35,
+     ylim=c(-1.5,1.5))
+abline(h=0)
+plot(m8.dc, select=3, shade=T, rug=F, cex.lab=1.35, cex.axis=1.35, cex.main=1.35, cex.sub=1.35,
+     ylim=c(-1.5,1.5))
+abline(h=0)
+plot(m8.dc, select=4, shade=T, rug=F, cex.lab=1.35, cex.axis=1.35, cex.main=1.35, cex.sub=1.35,
+     ylim=c(-1.5,1.5))
+abline(h=0)

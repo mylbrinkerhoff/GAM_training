@@ -149,3 +149,23 @@ contrasts(dat$WordO) <- "contr.treatment"
 
 m2.ord <- bam(Pos ~ s(Time) + s(Time,by=WordO) + WordO, data=dat)
 (smrym2.ord <- summary(m2.ord))
+
+plot(m2.ord, select=2, shade=TRUE, ylim=c(-1,2))
+abline(h=0)
+
+# model criticism
+gam.check(m2)
+
+# mixed-effects
+# random intercepts 
+m3 <- bam(Pos ~ Word +
+            s(Time, by=Word) + 
+            s(Speaker,bs="re"),
+          data=dat)
+(smrym3 <- summary(m3))
+
+par(mfrow=c(1,2))
+plot_smooth(m3, view="Time", plot_all="Word", main="m3", rug=FALSE, rm.ranef=T, ylim=c(-1,2), 
+            col=two.colors)
+
+plot_diff(m3, view="Time", comp=list(Word=c("tenth","tent")), rm.ranef=T, ylim=c(-1,2))

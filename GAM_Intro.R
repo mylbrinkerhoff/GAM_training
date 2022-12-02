@@ -136,3 +136,16 @@ m2a.ml <- bam(Pos ~ Word + # formula
               )
 m2b.ml <- bam(Pos ~ Word + s(Time, by=Word), data=dat, method="ML")
 compareML(m2a.ml, m2b.ml)
+
+# binary difference smooth
+dat$IsTenth <- (dat$Word == "tenth")*1
+
+m2.bin <- bam(Pos ~ s(Time) + s(Time,by=IsTenth), data=dat)
+(smry2bin <- summary(m2.bin))
+
+# ordered factor difference smooth
+dat$WordO <- as.ordered(dat$Word)
+contrasts(dat$WordO) <- "contr.treatment"
+
+m2.ord <- bam(Pos ~ s(Time) + s(Time,by=WordO) + WordO, data=dat)
+(smrym2.ord <- summary(m2.ord))
